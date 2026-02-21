@@ -1,0 +1,15 @@
+{
+  "name": "augusta-lead-gen-webhook",
+  "version": "1.0.0",
+  "description": "Meta Lead Ads webhook server for Augusta Digest",
+  "main": "webhook-server.js",
+  "scripts": {
+    "start": "node webhook-server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["webhook", "meta", "airtable", "discord"],
+  "author": "Andrew Athens",
+  "license": "MIT"
+}
