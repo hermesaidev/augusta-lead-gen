@@ -259,6 +259,64 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   
+  // ============ ATHENS GHL WEBHOOK ============
+  // GHL fires this when a new contact is created
+  // Point GHL workflow webhook URL to: https://augusta-lead-gen.onrender.com/athens-webhook
+  if (url.pathname === '/athens-webhook' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      // Respond immediately
+      res.writeHead(200);
+      res.end('OK');
+
+      try {
+        const payload = JSON.parse(body);
+        console.log(`[ATHENS] Received GHL webhook:`, JSON.stringify(payload).slice(0, 300));
+
+        // GHL sends contact data — handle multiple possible formats
+        const contact = payload.contact || payload;
+        const name = contact.name || contact.full_name ||
+          `${contact.firstName || contact.first_name || ''} ${contact.lastName || contact.last_name || ''}`.trim() || 'N/A';
+        const email = contact.email || 'N/A';
+        const phone = contact.phone || contact.phoneRaw || 'N/A';
+        const source = contact.source || contact.attributionSource || payload.source || 'N/A';
+        const tags = Array.isArray(contact.tags) ? contact.tags.join(', ') : (contact.tags || '');
+
+        const ATHENS_DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1475216055931506920/h7EE76NuvqPX0Kt29aQTWd4qI_Ty1hPStmZojYhIVzROQ5wZs8DF-l-7FZEQb01lMJ8D';
+
+        const discordPayload = JSON.stringify({
+          username: 'Athens Lead Bot',
+          embeds: [{
+            title: '🔥 New Athens Scoop Lead',
+            color: 3447003,
+            fields: [
+              { name: 'Name', value: name, inline: true },
+              { name: 'Email', value: email, inline: true },
+              { name: 'Phone', value: phone, inline: true },
+              { name: 'Source', value: source, inline: true },
+              ...(tags ? [{ name: 'Tags', value: tags, inline: false }] : []),
+            ],
+            footer: { text: `Athens Scoop Lead Gen • ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST` }
+          }]
+        });
+
+        const webhookUrl = new URL(ATHENS_DISCORD_WEBHOOK);
+        const result = await apiRequest({
+          hostname: webhookUrl.hostname,
+          path: webhookUrl.pathname,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(discordPayload) },
+        }, discordPayload);
+
+        console.log(`[ATHENS] Discord notified:`, result.status);
+      } catch (err) {
+        console.error(`[ATHENS] Error:`, err.message);
+      }
+    });
+    return;
+  }
+
   res.writeHead(404);
   res.end('Not Found');
 });
